@@ -193,7 +193,7 @@ function rDash(){
   h+='<div class="card"><h4>Service Health Matrix</h4><div class="svc-grid">';
   SN.forEach(function(s){
     var isUp=H[s]&&H[s].status==="healthy";
-    h+='<div class="svc-card" onclick="go(\''+findTab(s)+'\')"><div class="svc-dot '+(isUp?"up":"dn")+'"></div><div class="svc-ico">'+IC[s]+'</div><div class="svc-name">'+LB[s]+'</div><div class="svc-role">'+(isUp?"Online":"Offline")+'</div></div>';
+    h+='<div class="svc-card" onclick="go(&#39;'+findTab(s)+'&#39;)"><div class="svc-dot '+(isUp?"up":"dn")+'"></div><div class="svc-ico">'+IC[s]+'</div><div class="svc-name">'+LB[s]+'</div><div class="svc-role">'+(isUp?"Online":"Offline")+'</div></div>';
   });
   h+='</div></div></div>';
   document.getElementById("ct").innerHTML=h;
@@ -203,7 +203,7 @@ function rSvcs(){
   var h='<div class="title"><span class="ico">🔌</span> Service Map</div><div class="svc-grid" style="margin-bottom:16px">';
   SN.forEach(function(s){
     var isUp=H[s]&&H[s].status==="healthy";
-    h+='<div class="svc-card" onclick="go(\''+findTab(s)+'\')"><div class="svc-dot '+(isUp?"up":"dn")+'"></div><div class="svc-ico">'+IC[s]+'</div><div class="svc-name">'+LB[s]+'</div><div class="svc-role">'+RL[s]+'</div><div style="margin-top:6px;font-size:10px;color:var(--m)">Req: '+((C[s]&&C[s].stats&&C[s].stats.req)||0)+'</div></div>';
+    h+='<div class="svc-card" onclick="go(&#39;'+findTab(s)+'&#39;)"><div class="svc-dot '+(isUp?"up":"dn")+'"></div><div class="svc-ico">'+IC[s]+'</div><div class="svc-name">'+LB[s]+'</div><div class="svc-role">'+RL[s]+'</div><div style="margin-top:6px;font-size:10px;color:var(--m)">Req: '+((C[s]&&C[s].stats&&C[s].stats.req)||0)+'</div></div>';
   });
   h+='</div><div class="card"><h4>Service Details</h4><table class="tbl"><thead><tr><th>Service</th><th>Status</th><th>Role</th><th>Events</th><th>Alerts</th></tr></thead><tbody>';
   SN.forEach(function(s){
