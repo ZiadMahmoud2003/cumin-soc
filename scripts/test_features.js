@@ -1,44 +1,39 @@
-const TOKEN = "cumin_GjynCIFJtyoZ_73wasCoWNYf7Y-Pk0jMffHEdRzblBg";
+// GitHub: Create repo + get username via API
+const EMAIL = "ziadalex2003@gmail.com";
+const PASS = "2062003MZ*";
 
-const policy = ["package runtime", "import rego.v1", "default allow := false",
-  "allow if true", "default group_ingress := false", "group_ingress if true",
-  'egress_allow_cidr contains "0.0.0.0/0"'].join("\n");
+// Use Basic Auth to get user info and create repo
+const basicAuth = Buffer.from(`${EMAIL}:${PASS}`).toString("base64");
 
-async function t(method, url, body) {
-  const opts = { method, headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" } };
+async function ghRequest(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      "Authorization": `Basic ${basicAuth}`,
+      "Content-Type": "application/json",
+      "User-Agent": "cumin-soc-deployer",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  };
   if (body) opts.body = JSON.stringify(body);
-  try {
-    const r = await fetch(url, opts);
-    const text = await r.text();
-    const hit = r.status !== 404;
-    console.log(hit ? "💡 HIT!" : "   ", method.padEnd(6), url.replace("https://cumin.dev","").padEnd(30), "->", r.status, ":", text.substring(0, 200));
-    return { status: r.status, text };
-  } catch(e) { console.log("   ERR", method, url, e.message); }
+  const r = await fetch(`https://api.github.com${path}`, opts);
+  const data = await r.json();
+  return { status: r.status, data };
 }
 
 async function main() {
-  console.log("=== Network Policy — 405 means endpoint EXISTS, wrong method ===\n");
+  console.log("=== GitHub Setup ===\n");
 
-  // cumin.dev (not api.cumin.dev) returns 405 for PUT — endpoint exists!
-  // Try GET and PATCH on the same paths
-  const paths = ["/network-policy", "/api/network-policy", "/v1/network-policy", "/network-policies", "/v1/network-policies"];
-  
-  for (const path of paths) {
-    await t("GET",   "https://cumin.dev" + path);
-    await t("PATCH", "https://cumin.dev" + path, { policy });
-    await t("POST",  "https://cumin.dev" + path, { policy });
-    await t("POST",  "https://cumin.dev" + path, { rego: policy });
-    await t("PATCH", "https://cumin.dev" + path, { rego: policy });
-    console.log("");
+  // Get current user
+  const { status: s1, data: user } = await ghRequest("GET", "/user");
+  console.log("GET /user →", s1);
+  if (s1 === 200) {
+    console.log("  Username:", user.login);
+    console.log("  Name:", user.name);
+    console.log("  Email:", user.email);
+  } else {
+    console.log("  Error:", JSON.stringify(user));
+    console.log("\n⚠️  Basic auth might not work — GitHub requires PAT for API since 2020");
   }
-
-  // Also try with different payload keys
-  console.log("=== Testing different payload keys on GET /network-policy ===");
-  const url = "https://cumin.dev/network-policy";
-  await t("GET", url);
-  await t("PATCH", url, { network_policy: policy });
-  await t("PATCH", url, { data: policy });
-  await t("PUT",   url, { rego: policy });
 }
-
-main();
+main().catch(e => console.error(e.message));
