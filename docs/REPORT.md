@@ -436,13 +436,36 @@ await callTool("update_constellation", {
 
 ---
 
-### 5.8 Network Policy
+### 5.8 Network Policy (OPA/Rego)
 
-**Rating: ⭐ 2/10**
+**Rating: ⭐⭐⭐⭐ 7/10 — UI Only**
 
-Expected to allow ingress/egress rules, rate limiting, and IP allowlisting.
+Network Policy in Cumin is implemented as an **OPA (Open Policy Agent) Rego policy editor**, visible in the console sidebar. It uses Rego syntax to define allowed ingress/egress rules for the namespace mesh.
 
-**Result:** `404 Not Found` — feature either in beta or undocumented for standard tokens.
+**The default policy loaded in the UI:**
+```rego
+package runtime
+import rego.v1
+default allow := false
+allow if true
+default group_ingress := false
+group_ingress if true
+egress_allow_cidr contains "0.0.0.0/0"
+```
+
+**Endpoint discovery results:**
+
+| Domain | Method | Path | Response | Conclusion |
+|--------|--------|------|----------|------------|
+| `api.cumin.dev` | ALL | `/network-policy` | 404 | Not on API domain |
+| `cumin.dev` | GET | `/network-policy` | 404 | No GET handler |
+| `cumin.dev` | PUT/PATCH | `/network-policy` | **405** | **Endpoint exists!** |
+| MCP | — | `list_network_policies` | tool not found | Not in MCP tools |
+
+**Conclusion:** The Network Policy endpoint lives on `cumin.dev` (not `api.cumin.dev`) and returns **405 Method Not Allowed** for PUT/PATCH — meaning the route is registered by nginx but handled differently (likely via a session cookie from the console UI, not a bearer token). It is currently a **UI-only feature** not accessible via the standard MCP/bearer-token API.
+
+> [!NOTE]
+> This is consistent with the feature being an account-level control plane setting, not a per-project data plane setting. To configure Network Policy, use the Cumin Console sidebar: `api.cumin.dev/console#/network-policy`
 
 ---
 
@@ -836,7 +859,7 @@ xychart-beta
 | 🪣 S3 Buckets | **8.5/10** | S3-compatible, instant setup |
 | 🔐 Secrets | **9/10** | ✅ Works — value must be base64, project_id required |
 | 🌐 Constellations | **9.5/10** | ✅ Works — creates private net + shared endpoint |
-| 🔒 Network Policy | **2/10** | Tool not found in MCP tools list |
+| 🔒 Network Policy | **7/10** | ⚠️ UI only (OPA/Rego editor) — no MCP/API access |
 | 🔑 Pull Secrets | **8/10** | ✅ Works — validates real registry credentials live |
 | 📖 Documentation | **6/10** | Good for basics, sparse on advanced features |
 | 💻 Developer Experience | **9.5/10** | Clean UI, great DX, all core features accessible |
