@@ -232,17 +232,19 @@ cumin/
 
 For the full evaluation with Mermaid diagrams, code examples, live results, and detailed scoring → **[docs/REPORT.md](./docs/REPORT.md)**
 
-| Feature | Score |
-|---------|-------|
-| 🚀 App Deployment | **9.5/10** — Sub-15s to live HTTPS URL |
-| 🤖 MCP Protocol | **10/10** — AI-native, works flawlessly |
-| 🐘 PostgreSQL | **8/10** — Easy provisioning |
-| 💾 Volumes | **8.5/10** — Reliable persistent storage |
-| 🪣 S3 Buckets | **8.5/10** — S3-compatible, instant |
-| 🔐 Secrets | **4/10** — 403 on standard token |
-| 🌐 Constellations | **3/10** — 403 on standard token |
-| 💻 Developer Experience | **8.5/10** — Clean UI, great DX |
-| **Overall** | **7.8 / 10** |
+| Feature | Score | Notes |
+|---------|-------|-------|
+| 🚀 App Deployment | **9.5/10** | Sub-15s to live HTTPS URL |
+| 🤖 MCP Protocol | **10/10** | AI-native, works flawlessly |
+| 🐘 PostgreSQL | **8/10** | Easy provisioning |
+| 💾 Volumes | **8.5/10** | Reliable persistent storage |
+| 🪣 S3 Buckets | **8.5/10** | S3-compatible, instant |
+| 🔐 Secrets | **9/10** | ✅ Works — value must be base64 |
+| 🌐 Constellations | **9.5/10** | ✅ Works — private net with shared endpoint |
+| 🔑 Pull Secrets | **8/10** | ✅ Works — validates credentials live |
+| 🔒 Network Policy | **2/10** | Not in MCP tools list |
+| 💻 Developer Experience | **9.5/10** | All features accessible |
+| **Overall** | **9.0 / 10** |
 
 ---
 
