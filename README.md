@@ -30,33 +30,48 @@ This repository contains a fully deployed, production-grade **Security Operation
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        🌍 Public Internet                        │
-│                               │ HTTPS                            │
-│                    ┌──────────▼──────────┐                       │
-│                    │   soc-gateway        │  150m CPU / 250MB    │
-│                    │   Dashboard UI       │                       │
-│                    │   /proxy/* → backend │                       │
-│                    └──────────┬──────────┘                       │
-│                               │ HTTP                             │
-│                    ┌──────────▼──────────┐                       │
-│                    │   soc-backend        │  250m CPU / 512MB    │
-│                    │                      │                       │
-│   ┌────────────────┤  Ingestion Layer     ├─────────────────┐    │
-│   │ 🔥 Firewall    │  📋 SIEM            │  🍯 Honeypot    │    │
-│   └────────────────┤                      ├─────────────────┘    │
-│   ┌────────────────┤  Analysis Layer      ├─────────────────┐    │
-│   │ 👤 UBA         │  🌐 Threat Intel    │  🛡️ IDS/IPS     │    │
-│   └────────────────┤                      ├─────────────────┘    │
-│   ┌────────────────┤  Operations Layer    ├─────────────────┐    │
-│   │ ⚡ SOAR         │  🚨 Incidents       │  🔍 Vuln Scan*  │    │
-│   └────────────────┴──────────────────────┴─────────────────┘    │
-│                         Cumin Cloud                              │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Internet["🌍 Public Internet"]
+        User["👤 User / Browser"]
+    end
 
-* Vuln Scanner fetches REAL data from google.com, github.com, cloudflare.com
+    subgraph Cumin["☁️ Cumin Cloud"]
+        subgraph Gateway["soc-gateway — 150m CPU / 250MB"]
+            GW["📊 Dashboard UI\n/proxy/* → backend"]
+        end
+
+        subgraph Backend["soc-backend — 250m CPU / 512MB"]
+            subgraph Ingestion["🔻 Ingestion Layer"]
+                FW["🔥 Firewall"]
+                SIEM["📋 SIEM"]
+                HP["🍯 Honeypot"]
+            end
+            subgraph Analysis["🔬 Analysis Layer"]
+                UBA["👤 UBA"]
+                TI["🌐 Threat Intel"]
+                IDS["🛡️ IDS/IPS"]
+            end
+            subgraph Operations["⚙️ Operations Layer"]
+                SOAR["⚡ SOAR"]
+                INC["🚨 Incidents"]
+                VULN["🔍 Vuln Scanner*"]
+            end
+        end
+    end
+
+    subgraph Targets["🎯 Live Scan Targets"]
+        G["google.com"]
+        GH["github.com"]
+        CF["cloudflare.com"]
+    end
+
+    User -->|HTTPS| GW
+    GW -->|HTTP Proxy| Backend
+    VULN -.->|"Real HTTP Scans (every 60s)"| Targets
 ```
+
+> **\*** Vuln Scanner fetches **REAL data** from `google.com`, `github.com`, `cloudflare.com` — checking 7 security headers every 60 seconds.
 
 ---
 
@@ -88,7 +103,7 @@ This repository contains a fully deployed, production-grade **Security Operation
 ### 1. Clone & Configure
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cumin-soc.git
+git clone https://github.com/ZiadMahmoud2003/cumin-soc.git
 cd cumin-soc
 ```
 
