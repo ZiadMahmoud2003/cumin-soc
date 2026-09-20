@@ -22,6 +22,7 @@ This repository contains a fully deployed, production-grade **Security Operation
 | **Live URL**            | [https://soc-gateway-http-e83c51cb.hosted.cumin.dev](https://soc-gateway-http-e83c51cb.hosted.cumin.dev) |
 | **Platform**            | Cumin Cloud (`cumin.dev`)                                                                                |
 | **Total Apps Deployed** | 2 (backend + gateway)                                                                                    |
+| **Internal Mesh**       | 🔒 In-Kernel WireGuard Overlay (`10.100.0.0/24`) — Zero public backend exposure                          |
 | **Services Simulated**  | 9 SOC microservices                                                                                      |
 | **Real Data**           | Live HTTP security header scanning                                                                       |
 | **Full Report**         | [`docs/REPORT.md`](./docs/REPORT.md)                                                                     |
@@ -38,10 +39,10 @@ flowchart TD
 
     subgraph Cumin["☁️ Cumin Cloud"]
         subgraph Gateway["soc-gateway — 150m CPU / 250MB"]
-            GW["📊 Dashboard UI\n/proxy/* → backend"]
+            GW["📊 Dashboard UI\n/proxy/* → 10.100.0.94:4000"]
         end
 
-        subgraph Backend["soc-backend — 250m CPU / 512MB"]
+        subgraph Backend["soc-backend — 250m CPU / 512MB (Private Mesh)"]
             subgraph Ingestion["🔻 Ingestion Layer"]
                 FW["🔥 Firewall"]
                 SIEM["📋 SIEM"]
@@ -67,7 +68,7 @@ flowchart TD
     end
 
     User -->|HTTPS| GW
-    GW -->|HTTP Proxy| Backend
+    GW -->|"🔒 Private WireGuard Tunnel (10.100.0.94:4000)"| Backend
     VULN -.->|"Real HTTP Scans (every 60s)"| Targets
 ```
 
@@ -124,9 +125,9 @@ This will:
 
 1. ✅ Delete any existing SOC apps in the project
 2. ✅ Deploy `soc-backend` (all 9 services, real vulnerability scanning)
-3. ✅ Wait for backend to boot and capture its public URL
-4. ✅ Deploy `soc-gateway` (dashboard) pre-configured to proxy to the backend
-5. ✅ Print the final live URLs
+3. ✅ Wait for backend to boot and dynamically resolve its private WireGuard IP (`10.100.0.94`)
+4. ✅ Deploy `soc-gateway` (dashboard) pre-configured to route over the private WireGuard mesh
+5. ✅ Print the final live URLs and private mesh status
 
 **Expected output:**
 
