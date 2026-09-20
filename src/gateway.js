@@ -1,6 +1,6 @@
 const http = require("http");
 const PORT = process.env.PORT || 3000;
-const BACKEND = process.env.BACKEND_URL || "https://soc-backend-http-2e6c69af.hosted.cumin.dev";
+const BACKEND = process.env.BACKEND_URL || "http://10.100.0.94:4000";
 
 async function fetchJ(u) {
   try { const r = await fetch(u, { signal: AbortSignal.timeout(8000) }); return await r.json(); }

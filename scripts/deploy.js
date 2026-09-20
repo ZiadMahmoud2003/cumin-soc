@@ -79,24 +79,40 @@ async function main() {
   console.log("  ⏳ Waiting 20s for backend boot...\n");
   await new Promise(r => setTimeout(r, 20000));
 
-  // Get backend URL
+  // Get backend private WireGuard IP
   const apps2 = await callTool("list_apps", { project_id: PROJECT_ID });
   let backendUrl = null;
   try {
     const list = JSON.parse(apps2);
     const be = list.find(a => a.name === "soc-backend");
     if (be) {
-      backendUrl = be.ports?.[0]?.hostname;
-      console.log(`  Backend: ${be.status} → ${backendUrl}\n`);
+      console.log(`  Backend: ${be.status} (ID: ${be.id})`);
+      console.log("  🔍 Resolving internal WireGuard IP via exec_in_app...");
+      let privateIp = "10.100.0.94";
+      try {
+        const execRes = await callTool("exec_in_app", {
+          project_id: PROJECT_ID,
+          id: be.id,
+          command: ["ip", "-4", "addr", "show", "wg0"]
+        });
+        const m = execRes.match(/inet\s+(10\.100\.\d+\.\d+)/);
+        if (m) {
+          privateIp = m[1];
+        }
+      } catch (e) {
+        console.log("  ⚠️ Falling back to known private IP:", privateIp);
+      }
+      backendUrl = `http://${privateIp}:4000`;
+      console.log(`  🔒 Private Mesh Target: ${backendUrl}\n`);
     }
   } catch (e) { console.log("  Error:", e.message); }
 
   if (!backendUrl) { console.log("  ❌ No backend URL!"); return; }
 
   // 3. Deploy Gateway
-  console.log("🌐 Deploying soc-gateway...");
+  console.log("🌐 Deploying soc-gateway (Private Mesh Mode)...");
   let gatewayCode = fs.readFileSync(path.join(__dirname, "..", "src", "gateway.js"), "utf-8");
-  // Inject the actual backend URL
+  // Inject the private backend URL
   gatewayCode = gatewayCode.replace(
     /const BACKEND = process\.env\.BACKEND_URL \|\| "[^"]+"/,
     `const BACKEND = process.env.BACKEND_URL || "${backendUrl}"`
