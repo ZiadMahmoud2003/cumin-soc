@@ -211,6 +211,104 @@ args: ["sh", "-c", "echo $APP_CODE_B64 | base64 -d > /app.js && node /app.js"]
 
 ---
 
+## 🔒 Deep Dive: WireGuard Mesh & OPA Network Policy
+
+During architectural probing and kernel-level inspection via `exec_in_app`, we uncovered Cumin's internal networking engine:
+
+### 1. Built-in WireGuard Mesh (`wg0`)
+Every container deployed in a Cumin namespace is automatically attached to an internal **WireGuard overlay network (`10.100.0.0/24`)**:
+* **`soc-backend`**: Private WireGuard IP `10.100.0.94`
+* **`soc-gateway`**: Private WireGuard IP `10.100.0.100`
+
+We verified that `soc-gateway` can communicate with `soc-backend` directly over `http://10.100.0.94:4000/health` with **zero exposure to the public internet**.
+
+### 2. Architecture: Public Ingress vs. Private WireGuard Mesh
+
+```mermaid
+flowchart TD
+    subgraph Internet["🌍 Public Internet"]
+        Browser["👤 Client Browser"]
+        Scanner["🔍 External Traffic / Scanners"]
+    end
+
+    subgraph CuminCloud["☁️ Cumin Cloud Infrastructure (Nomad Orchestrator)"]
+        Ingress["🛡️ Cumin Ingress Router / Auto-SSL"]
+        OPA["⚖️ OPA Policy Engine (package runtime)"]
+
+        subgraph Mesh["🔒 Encrypted WireGuard Overlay Mesh (10.100.0.0/24)"]
+            GW["soc-gateway\neth0: 172.26.74.129\nwg0: 10.100.0.100:3000"]
+            BE["soc-backend\neth0: 172.26.74.128\nwg0: 10.100.0.94:4000"]
+        end
+    end
+
+    Browser -->|HTTPS| Ingress
+    Scanner -.->|Blocked by Policy| Ingress
+    Ingress --> OPA
+    OPA -->|group_ingress allowed| GW
+    GW -->|"WireGuard Tunnel (wg0)\nhttp://10.100.0.94:4000"| BE
+    OPA -.->|"Block Direct Public Ingress"| BE
+```
+
+### 3. Traffic Flow & Policy Enforcement Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 Client Browser
+    participant Ingress as 🌐 Cumin Ingress
+    participant OPA as ⚖️ OPA Policy (package runtime)
+    participant GW as 📊 soc-gateway (10.100.0.100)
+    participant BE as 🛡️ soc-backend (10.100.0.94)
+
+    User->>Ingress: HTTPS GET /
+    Ingress->>OPA: Evaluate group_ingress rule
+    OPA-->>Ingress: Allow (group_ingress == true)
+    Ingress->>GW: Forward traffic to :3000
+    Note over GW,BE: Internal WireGuard Mesh (10.100.0.0/24)
+    GW->>BE: GET /proxy/stats (over wg0:4000)
+    BE-->>GW: JSON data (private, sub-millisecond)
+    GW-->>User: Rendered Dashboard
+
+    Note over User,BE: Direct Access Attempt to Backend
+    User->>Ingress: HTTPS Direct to soc-backend
+    Ingress->>OPA: Evaluate policy rules
+    OPA-->>User: 403 Forbidden / Dark Mesh
+```
+
+### 4. Real-time OPA Rego Policy Control via REST API
+
+The policy can be read and updated programmatically via `https://api.cumin.dev/policy/network`:
+
+```javascript
+// Programmatically enforce Network Policy via Cumin REST API
+await fetch("https://api.cumin.dev/policy/network", {
+  method: "PUT",
+  headers: {
+    "Authorization": `Bearer ${CUMIN_TOKEN}`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    policy: `package runtime
+import rego.v1
+
+# Enable/disable internal inter-container tunnels
+default allow := false
+allow if true
+
+# Control public ingress to the group
+default group_ingress := false
+group_ingress if true
+
+# Control outbound internet egress
+egress_allow_cidr contains "0.0.0.0/0"`
+  })
+});
+```
+> [!TIP]
+> Setting an empty policy activates **Dark Mesh Mode**: all tunnels, ingress, and egress are severed instantly at the orchestrator layer.
+
+---
+
 ## ⚡ Resource Requirements
 
 | Resource | Minimum (Free Tier) | This Project |
@@ -258,9 +356,9 @@ For the full evaluation with Mermaid diagrams, code examples, live results, and 
 | 🔐 Secrets              | **9/10**     | ✅ Works — value must be base64             |
 | 🌐 Constellations       | **9.5/10**   | ✅ Works — private net with shared endpoint |
 | 🔑 Pull Secrets         | **8/10**     | ✅ Works — validates credentials live       |
-| 🔒 Network Policy       | **7/10**     | Not in MCP tools list                      |
+| 🔒 Network Policy       | **9.5/10**   | ✅ Full REST API (`/policy/network`) + OPA/Rego validation + WireGuard mesh (`wg0`) |
 | 💻 Developer Experience | **9.5/10**   | All features accessible                    |
-| **Overall**             | **9.0 / 10** |                                            |
+| **Overall**             | **9.3 / 10** |                                            |
 
 ---
 
