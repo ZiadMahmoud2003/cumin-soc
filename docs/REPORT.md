@@ -122,19 +122,22 @@ This makes it the **perfect stress test** for any cloud platform. If Cumin can h
 
 ```mermaid
 flowchart TD
-    subgraph EXT["🌍 External World"]
+    subgraph EXT["🌍 External Internet"]
         Analyst["👨‍💻 Security Analyst"]
-        Attacker["🕵️ Threat Actor"]
-        Websites["🌐 Real Websites\nGoogle / GitHub / Cloudflare"]
+        Attacker["🕵️ External Threat Actor"]
+        Websites["🌐 Public Target Websites\n(Google / GitHub / Cloudflare)"]
     end
 
-    subgraph GW["🌐 soc-gateway — Public Entry Point"]
+    subgraph GW["🌐 soc-gateway — Only Public Entry Point (Port 3000)"]
         UI["Dashboard UI\nHTML/CSS/JS"]
-        Proxy["HTTP Reverse Proxy\n/proxy/* route"]
+        Proxy["HTTP Reverse Proxy\n/proxy/*"]
     end
 
-    subgraph BE["⚙️ soc-backend — Consolidated Service (Port 4000)"]
+    subgraph BE["🔒 soc-backend — Isolated Private Mesh (Port 4000)"]
         direction TB
+        subgraph SIM["Internal Telemetry & Attack Simulator"]
+            Gen["⚡ In-Memory Simulation Engine"]
+        end
         subgraph ING["Ingestion Layer"]
             FW["🔥 Firewall"]
             IDS["🛡️ IDS/IPS"]
@@ -149,18 +152,26 @@ flowchart TD
             SOAR["⚡ SOAR"]
             OPS["🚨 Incidents"]
         end
-        subgraph RS["Real-World Scanning"]
+        subgraph RS["Outbound Security Auditing"]
             VS["🔍 Vuln Scanner"]
         end
     end
 
-    Analyst -->|"HTTPS"| UI
-    Attacker -.->|"Simulated Attacks"| IDS
-    Attacker -.->|"Honeypot Traps"| HP
-    Websites -->|"HTTP check every 60s"| VS
-    UI --> Proxy
-    Proxy -->|"🔒 WireGuard Mesh (http://10.100.0.94:4000)"| BE
+    %% External Connections (Zero Trust)
+    Analyst -->|"HTTPS (Authorized Access)"| UI
+    Attacker -.->|"Public Probes (Blocked / Filtered)"| GW
+    Attacker x-.-x|"⛔ Direct Ingress Blocked by OPA Policy"| BE
 
+    %% Gateway to Backend exclusively over WireGuard
+    UI --> Proxy
+    Proxy ==>|"🔒 Private WireGuard Tunnel (http://10.100.0.94:4000)"| BE
+
+    %% Outbound Scanning (Backend initiates, not external)
+    VS -->|"Outbound HTTP Header Audits (every 60s)"| Websites
+
+    %% Internal Telemetry Pipeline
+    Gen -->|"Simulated Exploit Traffic"| IDS
+    Gen -->|"Trap Deception Traps"| HP
     FW --> SIEM
     IDS --> SIEM
     HP --> SIEM
@@ -172,7 +183,8 @@ flowchart TD
 
     style EXT fill:#0a0e1a,color:#94a3b8,stroke:#2d3748
     style GW fill:#1a1f35,color:#e2e8f0,stroke:#6366f1
-    style BE fill:#111827,color:#e2e8f0,stroke:#4f46e5
+    style BE fill:#0c1a2e,color:#e2e8f0,stroke:#0284c7
+    style SIM fill:#1e1b4b,color:#c7d2fe,stroke:#4338ca
     style RS fill:#0c2d1e,color:#34d399,stroke:#059669
 ```
 
