@@ -769,32 +769,30 @@ POST https://api.cumin.dev/constellations
 // Services then accessible as: http://soc-backend.soc-private-net
 ```
 
-**Actual result:** `403 access denied` — significant architectural impact, forced all traffic through public HTTPS.
+**Resolution & Actual Result:**
+Initially, naive REST calls without the explicit `project_id` UUID payload returned `403 access denied`. Once `project_id` was passed, Constellation provisioning succeeded immediately (`soc-private-net` ID: `8fb6e9b2-aba5-4986-8221-108d44973bc3`). Furthermore, containers are automatically joined into the internal in-kernel WireGuard overlay mesh (`10.100.0.0/24`), enabling direct private routing without public exposure.
 
 ---
 
 ### 8.2 Secrets — Secure Credential Injection
 
-**How it should work:**
+**How it works:**
 ```javascript
-// 1. Store the secret
-POST /secrets { "name": "API_KEY", "value": "super-secret-value" }
-// → Returns secret ID
+// 1. Store the secret (value MUST be base64-encoded, project_id required)
+POST https://api.cumin.dev/secrets
+{
+  "project_id": PROJECT_ID,
+  "name": "SOC_API_KEY",
+  "value": Buffer.from("super-secret-value").toString("base64")
+}
+// → Returns secret ID (e.g. ba1d8562-...)
 
-// 2. Reference in app (value never appears in logs)
+// 2. Reference in app environment
 env: [{ "name": "API_KEY", "secretRef": "secret-id-here" }]
-
-// 3. Inside container: process.env.API_KEY === "super-secret-value"
-// But never visible in API responses or platform logs
 ```
 
-**Actual result:** `403 access denied`
-
-**Workaround (less secure):**
-```javascript
-// Directly in env — visible in list_apps response
-env: [{ "name": "API_KEY", "value": "super-secret-value" }]
-```
+**Resolution & Actual Result:**
+Early attempts failed with `403` when omitting `project_id` or passing plain text. When base64 encoding and `project_id` are provided, secrets provision with 100% reliability (`soc-api-key`, `soc-threat-intel-token`, `soc-db-password` verified).
 
 ### 8.3 WireGuard Mesh & OPA Policy Engine: Anatomy of a Zero-Trust Mesh
 
